@@ -25,10 +25,12 @@ jobs:
       - name: Download clips and extract contact sheets
         run: python handshake/extract.py
 
-      - name: Upload observation package
+      - name: Upload screening sheets
         uses: actions/upload-artifact@v4
         with:
-          name: handshake-observation-package
-          path: handshake/output
+          name: handshake-screening-sheets
+          path: |
+            handshake/output/sheets
+            handshake/output/metadata.json
           if-no-files-found: error
           retention-days: 7
