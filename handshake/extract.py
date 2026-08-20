@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# Screening run: public-domain White House greeting videos.
 import json
 import subprocess
 import sys
@@ -82,7 +83,6 @@ def resolve_commons(title: str) -> str:
     page = next(iter(pages.values()))
     if "missing" in page or not page.get("imageinfo"):
         raise RuntimeError(f"Commons file not found: {title}")
-    # Remove tracking query parameters from the original file URL.
     return page["imageinfo"][0]["url"].split("?", 1)[0]
 
 
@@ -156,7 +156,6 @@ def main() -> int:
 
     (OUT / "metadata.json").write_text(json.dumps({"candidates": records, "errors": errors}, indent=2), encoding="utf-8")
     print(f"Completed: {len(records)} downloads; {len(errors)} errors", flush=True)
-    # Preserve all completed material even if a few candidates remain unavailable.
     return 0 if records else 1
 
 
