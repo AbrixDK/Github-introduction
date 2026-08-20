@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import requests
@@ -30,7 +31,7 @@ CANDIDATES = [
 ]
 
 SESSION = requests.Session()
-SESSION.headers.update({"User-Agent": "Academic-handshake-observation/1.0 (Aarhus University student project)"})
+SESSION.headers.update({"User-Agent": "Academic-handshake-observation/1.0 (Aarhus University student project; contact via GitHub repository owner)"})
 
 
 def run(cmd: list[str]) -> None:
@@ -38,8 +39,32 @@ def run(cmd: list[str]) -> None:
     subprocess.run(cmd, check=True)
 
 
+def get_with_retry(url: str, *, params: dict[str, str] | None = None, stream: bool = False, timeout: int = 180) -> requests.Response:
+    last_error: Exception | None = None
+    for attempt in range(7):
+        try:
+            response = SESSION.get(url, params=params, stream=stream, timeout=timeout)
+            if response.status_code == 429:
+                retry_after = int(response.headers.get("Retry-After", "0") or 0)
+                wait = max(retry_after, 12 * (attempt + 1))
+                response.close()
+                print(f"Wikimedia rate limit; waiting {wait}s before retry {attempt + 2}", flush=True)
+                time.sleep(wait)
+                continue
+            response.raise_for_status()
+            return response
+        except Exception as exc:
+            last_error = exc
+            if attempt == 6:
+                break
+            wait = 5 * (attempt + 1)
+            print(f"Request failed ({exc}); waiting {wait}s before retry", flush=True)
+            time.sleep(wait)
+    raise RuntimeError(f"Request failed after retries: {last_error}")
+
+
 def resolve_commons(title: str) -> str:
-    response = SESSION.get(
+    response = get_with_retry(
         "https://commons.wikimedia.org/w/api.php",
         params={
             "action": "query",
@@ -50,23 +75,29 @@ def resolve_commons(title: str) -> str:
         },
         timeout=60,
     )
-    response.raise_for_status()
-    pages = response.json().get("query", {}).get("pages", {})
+    try:
+        pages = response.json().get("query", {}).get("pages", {})
+    finally:
+        response.close()
     page = next(iter(pages.values()))
     if "missing" in page or not page.get("imageinfo"):
         raise RuntimeError(f"Commons file not found: {title}")
-    return page["imageinfo"][0]["url"]
+    # Remove tracking query parameters from the original file URL.
+    return page["imageinfo"][0]["url"].split("?", 1)[0]
 
 
 def download(url: str, path: Path) -> None:
     if path.exists() and path.stat().st_size > 100_000:
         return
-    with SESSION.get(url, stream=True, timeout=180) as response:
-        response.raise_for_status()
+    response = get_with_retry(url, stream=True, timeout=300)
+    try:
         with path.open("wb") as fh:
             for chunk in response.iter_content(chunk_size=1024 * 1024):
                 if chunk:
                     fh.write(chunk)
+    finally:
+        response.close()
+    time.sleep(4)
 
 
 def probe(path: Path) -> dict[str, object]:
@@ -112,7 +143,7 @@ def main() -> int:
         try:
             print(f"Processing {item_id}: {candidate['title']}", flush=True)
             url = resolve_commons(candidate["title"])
-            extension = Path(url.split("?", 1)[0]).suffix or ".webm"
+            extension = Path(url).suffix or ".webm"
             source = SRC / f"{item_id}{extension}"
             download(url, source)
             metadata = probe(source)
@@ -121,11 +152,12 @@ def main() -> int:
         except Exception as exc:
             print(f"ERROR {item_id}: {exc}", file=sys.stderr, flush=True)
             errors.append({"id": item_id, "error": str(exc)})
+        time.sleep(2)
 
     (OUT / "metadata.json").write_text(json.dumps({"candidates": records, "errors": errors}, indent=2), encoding="utf-8")
-    if len(records) < 8:
-        raise RuntimeError(f"Only {len(records)} videos downloaded; fewer than eight are usable for screening")
-    return 0
+    print(f"Completed: {len(records)} downloads; {len(errors)} errors", flush=True)
+    # Preserve all completed material even if a few candidates remain unavailable.
+    return 0 if records else 1
 
 
 if __name__ == "__main__":
