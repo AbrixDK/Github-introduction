@@ -1,4 +1,5 @@
 from __future__ import annotations
+# Trigger the all-meeting-video listing after its workflow was added to the base branch.
 import json, time
 from pathlib import Path
 import requests
@@ -26,7 +27,6 @@ for prefix in prefixes:
         cont=d.get('continue',{}).get('aicontinue')
         if not cont: break
         time.sleep(1)
-# deduplicate
 seen=set(); outrows=[]
 for r in rows:
     if r['name'] not in seen:
