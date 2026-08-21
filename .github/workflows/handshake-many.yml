@@ -1,0 +1,37 @@
+name: Screen chronological White House greeting pool
+
+on:
+  pull_request:
+    paths:
+      - 'handshake/screen_many.py'
+      - '.github/workflows/handshake-many.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install video tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+
+      - name: Screen candidates
+        run: python handshake/screen_many.py
+
+      - name: Upload contact sheets
+        uses: actions/upload-artifact@v4
+        with:
+          name: handshake-many-screening
+          path: |
+            handshake/many_output/sheets
+            handshake/many_output/metadata.json
+          if-no-files-found: error
+          retention-days: 7
