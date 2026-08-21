@@ -1,4 +1,5 @@
 from __future__ import annotations
+# Re-run 2026-08-21 for final ten-case arrival-greeting sample.
 import json, time
 from pathlib import Path
 import requests
