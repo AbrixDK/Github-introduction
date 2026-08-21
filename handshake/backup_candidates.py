@@ -1,4 +1,5 @@
 from __future__ import annotations
+# Trigger the backup-candidate workflow after it was added to the base branch.
 import json, subprocess, time, re, sys
 from pathlib import Path
 import requests
