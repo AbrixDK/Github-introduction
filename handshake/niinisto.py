@@ -1,4 +1,5 @@
 from __future__ import annotations
+# Trigger the Finland workflow after it was added to the base branch.
 import json, subprocess, time, sys
 from pathlib import Path
 import requests
@@ -13,7 +14,8 @@ S=requests.Session(); S.headers.update({'User-Agent':'Aarhus-University-handshak
 def api():
     for a in range(8):
         r=S.get(API,params={'action':'query','prop':'imageinfo','titles':'File:'+TITLE,'iiprop':'url|size|mime|mediatype|derivatives','format':'json'},timeout=90)
-        if r.status_code==429: r.close(); time.sleep(12*(a+1)); continue
+        if r.status_code==429:
+            r.close(); time.sleep(12*(a+1)); continue
         r.raise_for_status(); d=r.json(); r.close(); p=next(iter(d['query']['pages'].values()))
         if 'missing' in p or not p.get('imageinfo'): raise RuntimeError('file not found')
         return p['imageinfo'][0]
@@ -37,13 +39,15 @@ def download(url,path):
     for a in range(8):
         try:
             r=S.get(url.split('?',1)[0],stream=True,timeout=600)
-            if r.status_code==429: r.close(); time.sleep(15*(a+1)); continue
+            if r.status_code==429:
+                r.close(); time.sleep(15*(a+1)); continue
             r.raise_for_status()
             with path.open('wb') as f:
                 for c in r.iter_content(1024*1024):
                     if c: f.write(c)
             r.close(); return
-        except Exception as e: last=e; time.sleep(8*(a+1))
+        except Exception as e:
+            last=e; time.sleep(8*(a+1))
     raise RuntimeError(last)
 
 def run(cmd): subprocess.run(cmd,check=True)
@@ -53,14 +57,12 @@ def main():
     download(url,path)
     p=subprocess.run(['ffprobe','-v','error','-show_entries','format=duration','-of','default=nw=1:nk=1',str(path)],capture_output=True,text=True,check=True)
     dur=float(p.stdout.strip())
-    # Screen the first two minutes at 1 frame per second.
     pat=TMP/'screen_%04d.jpg'
     vf=("fps=1,scale=640:-2,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
         "text='%{pts\\:hms}':x=10:y=10:fontsize=24:fontcolor=white:box=1:boxcolor=black@0.65")
     run(['ffmpeg','-loglevel','error','-y','-i',str(path),'-t',str(min(120,dur)),'-vf',vf,'-q:v','4',str(pat)])
     run(['ffmpeg','-loglevel','error','-y','-framerate','1','-i',str(pat),'-vf','scale=320:-2,tile=5x5:padding=4:margin=4','-q:v','4',str(SHEETS/'niinisto_screen_%02d.jpg')])
     for f in TMP.glob('screen_*.jpg'): f.unlink()
-    # Fine frames for the first 30 seconds at 10 fps.
     pat2=TMP/'fine_%05d.jpg'
     vf2=("fps=10,scale=800:-2,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
         "text='%{pts\\:hms}':x=10:y=10:fontsize=28:fontcolor=white:box=1:boxcolor=black@0.65")
