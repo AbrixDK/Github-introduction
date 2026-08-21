@@ -1,4 +1,5 @@
 from __future__ import annotations
+# Trigger after the targeted workflow was added to the base branch.
 import json, subprocess, time, sys
 from pathlib import Path
 import requests
