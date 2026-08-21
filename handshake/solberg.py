@@ -1,4 +1,5 @@
 from __future__ import annotations
+# Trigger the Norwegian workflow after it was added to the base branch.
 import json, subprocess, time
 from pathlib import Path
 import requests
