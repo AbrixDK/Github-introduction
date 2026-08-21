@@ -1,0 +1,26 @@
+name: List all Trump meeting videos on Commons
+
+on:
+  pull_request:
+    paths:
+      - 'handshake/list_all_meets.py'
+      - '.github/workflows/handshake-all-meets.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: List videos
+        run: python handshake/list_all_meets.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: handshake-all-meets
+          path: handshake/all_meets_output
+          if-no-files-found: error
+          retention-days: 7
