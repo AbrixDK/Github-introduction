@@ -1,0 +1,26 @@
+name: Search target White House video titles
+
+on:
+  pull_request:
+    paths:
+      - 'handshake/list_target_titles.py'
+      - '.github/workflows/handshake-target-titles.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Search titles
+        run: python handshake/list_target_titles.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: handshake-target-titles
+          path: handshake/title_output
+          if-no-files-found: error
+          retention-days: 7
