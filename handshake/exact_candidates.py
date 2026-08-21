@@ -1,4 +1,5 @@
 from __future__ import annotations
+# Trigger the exact-candidate workflow after adding it to the base branch.
 import json, re, subprocess, time, sys
 from pathlib import Path
 import requests
