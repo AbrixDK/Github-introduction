@@ -1,0 +1,32 @@
+name: Extract final targeted handshake windows
+
+on:
+  pull_request:
+    paths:
+      - 'handshake/final_windows.py'
+      - '.github/workflows/handshake-final-windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install video tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+      - name: Extract final windows
+        run: python handshake/final_windows.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: handshake-final-windows
+          path: |
+            handshake/final_windows_output/sheets
+            handshake/final_windows_output/metadata.json
+          if-no-files-found: error
+          retention-days: 7
